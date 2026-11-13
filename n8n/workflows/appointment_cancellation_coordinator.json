@@ -12,7 +12,10 @@
       "name": "Cancellation Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [220, 300]
+      "position": [
+        220,
+        300
+      ]
     },
     {
       "parameters": {
@@ -25,7 +28,10 @@
       "name": "Google Gemini Model",
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
-      "position": [440, 500],
+      "position": [
+        440,
+        500
+      ],
       "credentials": {
         "googlePalmApi": {
           "id": "gemini-api-key",
@@ -41,7 +47,10 @@
       "name": "AI Scheduling Coordinator Agent",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [440, 300]
+      "position": [
+        440,
+        300
+      ]
     },
     {
       "parameters": {
@@ -63,14 +72,24 @@
           ]
         },
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={ \"appointment_id\": {{ $fromAI('appointment_id', 'Appointment ID integer', 'number') }} }"
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "appointment_id",
+              "value": "={{ $fromAI(\"appointment_id\", \"The appointment ID integer\", \"number\") }}"
+            }
+          ]
+        }
       },
       "id": "tool-appointment-details",
       "name": "Tool: Get Details",
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
-      "position": [680, 180]
+      "position": [
+        680,
+        180
+      ]
     },
     {
       "parameters": {
@@ -92,14 +111,24 @@
           ]
         },
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={ \"appointment_id\": {{ $fromAI('appointment_id', 'Appointment ID integer', 'number') }} }"
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "appointment_id",
+              "value": "={{ $fromAI(\"appointment_id\", \"The appointment ID integer\", \"number\") }}"
+            }
+          ]
+        }
       },
       "id": "tool-find-eligible",
       "name": "Tool: Find Eligible",
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
-      "position": [680, 300]
+      "position": [
+        680,
+        300
+      ]
     },
     {
       "parameters": {
@@ -121,14 +150,24 @@
           ]
         },
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={ \"appointment_id\": {{ $fromAI('appointment_id', 'Appointment ID integer', 'number') }} }"
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "appointment_id",
+              "value": "={{ $fromAI(\"appointment_id\", \"The appointment ID integer\", \"number\") }}"
+            }
+          ]
+        }
       },
       "id": "tool-rank-candidates",
       "name": "Tool: Rank Candidates",
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
-      "position": [680, 420]
+      "position": [
+        680,
+        420
+      ]
     },
     {
       "parameters": {
@@ -150,14 +189,36 @@
           ]
         },
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={ \"appointment_id\": {{ $fromAI('appointment_id', 'Appointment ID', 'number') }}, \"patient_id\": {{ $fromAI('patient_id', 'Patient ID', 'number') }}, \"waitlist_id\": {{ $fromAI('waitlist_id', 'Waitlist ID', 'number') }}, \"expiry_minutes\": 15 }"
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "appointment_id",
+              "value": "={{ $fromAI(\"appointment_id\", \"The appointment ID integer\", \"number\") }}"
+            },
+            {
+              "name": "patient_id",
+              "value": "={{ $fromAI(\"patient_id\", \"Patient ID integer\", \"number\") }}"
+            },
+            {
+              "name": "waitlist_id",
+              "value": "={{ $fromAI(\"waitlist_id\", \"Waitlist entry ID integer\", \"number\") }}"
+            },
+            {
+              "name": "expiry_minutes",
+              "value": "15"
+            }
+          ]
+        }
       },
       "id": "tool-create-offer",
       "name": "Tool: Create Offer",
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
-      "position": [680, 540]
+      "position": [
+        680,
+        540
+      ]
     },
     {
       "parameters": {
@@ -179,14 +240,32 @@
           ]
         },
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={ \"patient_id\": {{ $fromAI('patient_id', 'Patient ID', 'number') }}, \"offer_id\": {{ $fromAI('offer_id', 'Offer ID', 'number') }}, \"notification_type\": \"offer_created\" }"
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "patient_id",
+              "value": "={{ $fromAI(\"patient_id\", \"Patient ID integer\", \"number\") }}"
+            },
+            {
+              "name": "offer_id",
+              "value": "={{ $fromAI(\"offer_id\", \"Offer ID integer\", \"number\") }}"
+            },
+            {
+              "name": "notification_type",
+              "value": "offer_created"
+            }
+          ]
+        }
       },
       "id": "tool-notify-patient",
       "name": "Tool: Notify Patient",
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
-      "position": [680, 660]
+      "position": [
+        680,
+        660
+      ]
     },
     {
       "parameters": {
@@ -208,14 +287,28 @@
           ]
         },
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={ \"appointment_id\": {{ $fromAI('appointment_id', 'Appointment ID', 'number') }}, \"reason\": {{ $fromAI('reason', 'Reason string', 'string') }} }"
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "appointment_id",
+              "value": "={{ $fromAI(\"appointment_id\", \"The appointment ID integer\", \"number\") }}"
+            },
+            {
+              "name": "reason",
+              "value": "={{ $fromAI(\"reason\", \"Escalation reason string\", \"string\") }}"
+            }
+          ]
+        }
       },
       "id": "tool-escalate-admin",
       "name": "Tool: Escalate to Admin",
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
-      "position": [680, 780]
+      "position": [
+        680,
+        780
+      ]
     }
   ],
   "connections": {
@@ -313,4 +406,3 @@
     "executionOrder": "v1"
   }
 }
-
