@@ -238,6 +238,10 @@ def tool_check_offer_status(payload: CheckOfferStatusInput, db: Session = Depend
 
     if is_expired:
         offer.status = OfferStatus.EXPIRED
+        # Reset waitlist entry back to waiting so patient remains eligible
+        waitlist_entry = db.query(Waitlist).filter(Waitlist.id == offer.waitlist_id).first()
+        if waitlist_entry and waitlist_entry.status == WaitlistStatus.OFFERED:
+            waitlist_entry.status = WaitlistStatus.WAITING
         db.commit()
 
     return CheckOfferStatusOutput(
@@ -268,6 +272,10 @@ def tool_process_expired_offers(db: Session = Depends(get_db)):
     processed = []
     for o in expired_offers:
         o.status = OfferStatus.EXPIRED
+        # Reset patient's waitlist status back to waiting so they remain eligible for future openings
+        waitlist_entry = db.query(Waitlist).filter(Waitlist.id == o.waitlist_id).first()
+        if waitlist_entry and waitlist_entry.status == WaitlistStatus.OFFERED:
+            waitlist_entry.status = WaitlistStatus.WAITING
         processed.append({
             "offer_id": o.id,
             "appointment_id": o.appointment_id,

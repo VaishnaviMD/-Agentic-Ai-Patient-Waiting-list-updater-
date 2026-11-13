@@ -103,6 +103,9 @@ def accept_offer_atomic(db: Session, offer_id: int, patient_id: int) -> Appointm
 
     if offer.expires_at < now:
         offer.status = OfferStatus.EXPIRED
+        waitlist_entry = db.query(Waitlist).filter(Waitlist.id == offer.waitlist_id).first()
+        if waitlist_entry and waitlist_entry.status == WaitlistStatus.OFFERED:
+            waitlist_entry.status = WaitlistStatus.WAITING
         db.commit()
         raise HTTPException(
             status_code=status.HTTP_410_GONE,
