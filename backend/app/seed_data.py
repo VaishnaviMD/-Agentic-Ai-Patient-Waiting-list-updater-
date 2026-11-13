@@ -167,7 +167,21 @@ def seed_database():
                 reason="Routine Cardiac Assessment",
             )
             db.add(appt)
+            db.flush()
+            demo_appt_id = appt.id
             print(f"  ✅ Scheduled demo appointment for Alice with Dr. Sharma at {next_monday.strftime('%A %I:%M %p')}")
+        else:
+            existing_appt.patient_id = alice.id
+            existing_appt.status = AppointmentStatus.SCHEDULED
+            existing_appt.start_time = next_monday
+            existing_appt.end_time = next_monday + timedelta(minutes=30)
+            existing_appt.cancellation_reason = None
+            demo_appt_id = existing_appt.id
+            print(f"  ✅ Reset demo appointment for Alice with Dr. Sharma at {next_monday.strftime('%A %I:%M %p')}")
+
+        # Clean up any stale offers for the demo appointment
+        from app.models.offer import AppointmentOffer
+        db.query(AppointmentOffer).filter(AppointmentOffer.appointment_id == demo_appt_id).delete()
 
         # 5. Place Bob and Charlie on Dr. Sharma's waitlist
         # Bob: Preferred Monday Afternoon (High Priority!)
@@ -191,6 +205,11 @@ def seed_database():
             )
             db.add(bob_waitlist)
             print("  ✅ Bob registered on Dr. Sharma waitlist (Preferred: Monday Afternoon)")
+        else:
+            bob_waitlist.status = WaitlistStatus.WAITING
+            bob_waitlist.preferred_days = ["Monday"]
+            bob_waitlist.preferred_time_periods = ["Afternoon"]
+            print("  ✅ Bob waitlist status reset to WAITING")
 
         # Charlie: Preferred Any Day (Medium Priority)
         charlie_waitlist = (
@@ -213,6 +232,11 @@ def seed_database():
             )
             db.add(charlie_waitlist)
             print("  ✅ Charlie registered on Dr. Sharma waitlist (Preferred: Any Day/Time)")
+        else:
+            charlie_waitlist.status = WaitlistStatus.WAITING
+            charlie_waitlist.preferred_days = ["Any"]
+            charlie_waitlist.preferred_time_periods = ["Any"]
+            print("  ✅ Charlie waitlist status reset to WAITING")
 
         db.commit()
         print("🎉 Database seeding completed successfully!")
