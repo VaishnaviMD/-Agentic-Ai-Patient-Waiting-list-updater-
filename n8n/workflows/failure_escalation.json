@@ -1,0 +1,58 @@
+{
+  "name": "CareFlow - Failure Recovery and Admin Escalation",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "error-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://hospital_backend:8000/api/v1/agent/escalate-to-admin",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Agent-Secret",
+              "value": "agent_internal_shared_secret_hospital_ai_2026"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"appointment_id\": {{ $json.execution.error.appointment_id || 1 }},\n  \"reason\": \"Automated Workflow Failure: \" + {{ JSON.stringify($json.execution.error.message || 'Unknown workflow execution exception') }},\n  \"context\": {\n    \"execution_id\": {{ $json.execution.id }},\n    \"workflow_id\": {{ $json.workflow.id }},\n    \"workflow_name\": {{ $json.workflow.name }}\n  }\n}"
+      },
+      "id": "http-post-escalation",
+      "name": "Post Escalation to Hospital Admin",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300]
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Post Escalation to Hospital Admin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
+

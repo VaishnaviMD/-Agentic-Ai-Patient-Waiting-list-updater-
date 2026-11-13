@@ -1,0 +1,316 @@
+{
+  "name": "CareFlow - Appointment Cancellation Coordinator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "appointment-cancelled",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-trigger-cancel",
+      "name": "Cancellation Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "model": "gemini-1.5-flash",
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "gemini-model-cancel",
+      "name": "Google Gemini Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [440, 500],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "gemini-api-key",
+          "name": "Google Gemini Credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "An appointment cancellation event has occurred.\n\nCancellation Context:\n- Appointment ID: {{ $json.body.appointment_id }}\n- Doctor ID: {{ $json.body.doctor_id }}\n- Slot Time: {{ $json.body.slot_time }}\n- Reason: {{ $json.body.reason }}\n\nYour Goal as Autonomous Scheduling Agent:\n1. Call tool 'get_appointment_details' to retrieve clinical slot parameters.\n2. Call tool 'find_eligible_patients' to query patients on this doctor's waitlist.\n3. If NO eligible patients exist, call tool 'escalate_to_admin' with reason 'No waitlist candidates'.\n4. If candidates exist, call tool 'rank_waitlist_candidates' to obtain deterministic scores.\n5. Select Candidate #1 (highest score) and call tool 'create_appointment_offer'.\n6. Call tool 'notify_patient' to deliver the in-app offer alert.\n7. Output a concise summary of the decisions made."
+      },
+      "id": "ai-agent-coordinator",
+      "name": "AI Scheduling Coordinator Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "name": "get_appointment_details",
+        "description": "Retrieves clinical slot parameters, doctor details, day of week, and time period.",
+        "method": "POST",
+        "url": "http://hospital_backend:8000/api/v1/agent/appointment-details",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Agent-Secret",
+              "value": "agent_internal_shared_secret_hospital_ai_2026"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"appointment_id\": {{ $fromAI('appointment_id', 'Appointment ID integer', 'number') }} }"
+      },
+      "id": "tool-appointment-details",
+      "name": "Tool: Get Details",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [680, 180]
+    },
+    {
+      "parameters": {
+        "name": "find_eligible_patients",
+        "description": "Retrieves waitlisted candidates seeking appointments with this doctor.",
+        "method": "POST",
+        "url": "http://hospital_backend:8000/api/v1/agent/eligible-patients",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Agent-Secret",
+              "value": "agent_internal_shared_secret_hospital_ai_2026"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"appointment_id\": {{ $fromAI('appointment_id', 'Appointment ID integer', 'number') }} }"
+      },
+      "id": "tool-find-eligible",
+      "name": "Tool: Find Eligible",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "name": "rank_waitlist_candidates",
+        "description": "Calculates deterministic priority scores (+25 day, +25 time, +25 seniority, +25 history) and returns ranked candidates.",
+        "method": "POST",
+        "url": "http://hospital_backend:8000/api/v1/agent/rank-candidates",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Agent-Secret",
+              "value": "agent_internal_shared_secret_hospital_ai_2026"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"appointment_id\": {{ $fromAI('appointment_id', 'Appointment ID integer', 'number') }} }"
+      },
+      "id": "tool-rank-candidates",
+      "name": "Tool: Rank Candidates",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [680, 420]
+    },
+    {
+      "parameters": {
+        "name": "create_appointment_offer",
+        "description": "Creates a pending, expiring offer in PostgreSQL for the selected waitlist candidate.",
+        "method": "POST",
+        "url": "http://hospital_backend:8000/api/v1/agent/create-offer",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Agent-Secret",
+              "value": "agent_internal_shared_secret_hospital_ai_2026"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"appointment_id\": {{ $fromAI('appointment_id', 'Appointment ID', 'number') }}, \"patient_id\": {{ $fromAI('patient_id', 'Patient ID', 'number') }}, \"waitlist_id\": {{ $fromAI('waitlist_id', 'Waitlist ID', 'number') }}, \"expiry_minutes\": 15 }"
+      },
+      "id": "tool-create-offer",
+      "name": "Tool: Create Offer",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [680, 540]
+    },
+    {
+      "parameters": {
+        "name": "notify_patient",
+        "description": "Dispatches an alert to the patient portal notifying them of their urgent offer.",
+        "method": "POST",
+        "url": "http://hospital_backend:8000/api/v1/agent/notify-patient",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Agent-Secret",
+              "value": "agent_internal_shared_secret_hospital_ai_2026"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"patient_id\": {{ $fromAI('patient_id', 'Patient ID', 'number') }}, \"offer_id\": {{ $fromAI('offer_id', 'Offer ID', 'number') }}, \"notification_type\": \"offer_created\" }"
+      },
+      "id": "tool-notify-patient",
+      "name": "Tool: Notify Patient",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [680, 660]
+    },
+    {
+      "parameters": {
+        "name": "escalate_to_admin",
+        "description": "Logs an escalation record in the admin dashboard when no candidates match or an exception occurs.",
+        "method": "POST",
+        "url": "http://hospital_backend:8000/api/v1/agent/escalate-to-admin",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Agent-Secret",
+              "value": "agent_internal_shared_secret_hospital_ai_2026"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"appointment_id\": {{ $fromAI('appointment_id', 'Appointment ID', 'number') }}, \"reason\": {{ $fromAI('reason', 'Reason string', 'string') }} }"
+      },
+      "id": "tool-escalate-admin",
+      "name": "Tool: Escalate to Admin",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [680, 780]
+    }
+  ],
+  "connections": {
+    "Cancellation Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI Scheduling Coordinator Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Scheduling Coordinator Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Get Details": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Scheduling Coordinator Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Find Eligible": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Scheduling Coordinator Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Rank Candidates": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Scheduling Coordinator Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Create Offer": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Scheduling Coordinator Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Notify Patient": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Scheduling Coordinator Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Escalate to Admin": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Scheduling Coordinator Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
+

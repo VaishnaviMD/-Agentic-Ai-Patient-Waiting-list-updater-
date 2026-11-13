@@ -1,0 +1,105 @@
+services:
+  # -------------------------------------------------------------
+  # 1. Authoritative Relational Database (PostgreSQL 16)
+  # -------------------------------------------------------------
+  hospital_db:
+    image: postgres:16-alpine
+    container_name: hospital_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-hospital_core}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-hospital_core}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - hospital_net
+
+  # -------------------------------------------------------------
+  # 2. Application Backend API (FastAPI / Python 3.11)
+  # -------------------------------------------------------------
+  hospital_backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hospital_backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      hospital_db:
+        condition: service_healthy
+    networks:
+      - hospital_net
+
+  # -------------------------------------------------------------
+  # 3. Web UI Portal & Admin Dashboard (React + TypeScript + Vite)
+  # -------------------------------------------------------------
+  hospital_frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: hospital_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000/api
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - hospital_backend
+    networks:
+      - hospital_net
+
+  # -------------------------------------------------------------
+  # 4. Agentic AI & Workflow Orchestrator (n8n Engine)
+  # -------------------------------------------------------------
+  hospital_n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: hospital_n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_PORT=5678
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-dev_n8n_encryption_key_32chars_hospital_poc}
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=hospital_db
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=hospital_n8n
+      - DB_POSTGRESDB_USER=${POSTGRES_USER:-postgres}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD:-postgres_dev_password}
+      - N8N_COMMUNITY_PACKAGES_ENABLED=true
+      - GENERIC_TIMEZONE=UTC
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      hospital_db:
+        condition: service_healthy
+    networks:
+      - hospital_net
+
+networks:
+  hospital_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  n8n_data:
+    driver: local
+
