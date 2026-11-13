@@ -300,3 +300,4 @@ Use this structured script when demonstrating the project to senior architects o
 
 #### Q3: "What prevents Gemini from hallucinating an offer or modifying patient scores?"
 > **Answer:** *"Gemini has zero write privileges on the database and no ability to compute scores. Scoring is executed exclusively in pure Python by `PrioritizationEngine.rank_candidates()`. Gemini only receives the ranked list and invokes our pre-validated `create_offer` tool. Any invalid payload is caught by Pydantic v2 schemas and rejected with HTTP 422."*
+

@@ -135,7 +135,7 @@ def seed_database():
                 patient = user.patient_profile
             created_patients.append(patient)
 
-        # 4. Create an Appointment for Alice with Dr. Sharma (next Monday at 3 PM)
+        # 4. Create or Reset Demo Appointment (ID 1) for Alice with Dr. Sharma (next Monday at 3 PM)
         dr_sharma = created_doctors[0]
         alice = created_patients[0]
         bob = created_patients[1]
@@ -148,17 +148,20 @@ def seed_database():
             days_ahead = 7
         next_monday = (now + timedelta(days=days_ahead)).replace(hour=15, minute=0, second=0, microsecond=0)
 
-        existing_appt = (
-            db.query(Appointment)
-            .filter(
-                Appointment.doctor_id == dr_sharma.id,
-                Appointment.patient_id == alice.id,
-            )
-            .first()
-        )
-
-        if not existing_appt:
+        demo_appt = db.query(Appointment).filter(Appointment.id == 1).first()
+        if demo_appt:
+            demo_appt.patient_id = alice.id
+            demo_appt.doctor_id = dr_sharma.id
+            demo_appt.status = AppointmentStatus.SCHEDULED
+            demo_appt.start_time = next_monday
+            demo_appt.end_time = next_monday + timedelta(minutes=30)
+            demo_appt.reason = "Routine Cardiac Assessment"
+            demo_appt.cancellation_reason = None
+            demo_appt_id = demo_appt.id
+            print(f"  ✅ Reset demo appointment #1 for Alice with Dr. Sharma at {next_monday.strftime('%A %I:%M %p')}")
+        else:
             appt = Appointment(
+                id=1,
                 doctor_id=dr_sharma.id,
                 patient_id=alice.id,
                 start_time=next_monday,
@@ -169,19 +172,14 @@ def seed_database():
             db.add(appt)
             db.flush()
             demo_appt_id = appt.id
-            print(f"  ✅ Scheduled demo appointment for Alice with Dr. Sharma at {next_monday.strftime('%A %I:%M %p')}")
-        else:
-            existing_appt.patient_id = alice.id
-            existing_appt.status = AppointmentStatus.SCHEDULED
-            existing_appt.start_time = next_monday
-            existing_appt.end_time = next_monday + timedelta(minutes=30)
-            existing_appt.cancellation_reason = None
-            demo_appt_id = existing_appt.id
-            print(f"  ✅ Reset demo appointment for Alice with Dr. Sharma at {next_monday.strftime('%A %I:%M %p')}")
+            print(f"  ✅ Scheduled demo appointment #1 for Alice with Dr. Sharma at {next_monday.strftime('%A %I:%M %p')}")
+
+        # Delete any extra demo appointments created during tests
+        db.query(Appointment).filter(Appointment.id > 1).delete()
 
         # Clean up any stale offers for the demo appointment
         from app.models.offer import AppointmentOffer
-        db.query(AppointmentOffer).filter(AppointmentOffer.appointment_id == demo_appt_id).delete()
+        db.query(AppointmentOffer).delete()
 
         # 5. Place Bob and Charlie on Dr. Sharma's waitlist
         # Bob: Preferred Monday Afternoon (High Priority!)
