@@ -147,14 +147,32 @@ def cancel_appointment(
     db.refresh(appointment)
 
     # Dispatch asynchronous event to n8n workflow webhook
+    slot_iso = appointment.start_time.isoformat()
+    agent_prompt = (
+        f"An appointment cancellation event has occurred.\n\n"
+        f"Cancellation Context:\n"
+        f"- Appointment ID: {appointment.id}\n"
+        f"- Doctor ID: {appointment.doctor_id}\n"
+        f"- Slot Time: {slot_iso}\n"
+        f"- Reason: {data.cancellation_reason}\n\n"
+        f"Your Goal as Autonomous Scheduling Agent:\n"
+        f"1. Call tool get_appointment_details to retrieve clinical slot parameters.\n"
+        f"2. Call tool find_eligible_patients to query patients on this doctor's waitlist.\n"
+        f"3. If NO eligible patients exist, call tool escalate_to_admin with reason 'No waitlist candidates'.\n"
+        f"4. If candidates exist, call tool rank_waitlist_candidates to obtain deterministic scores.\n"
+        f"5. Select Candidate #1 (highest score) and call tool create_appointment_offer.\n"
+        f"6. Call tool notify_patient to deliver the in-app offer alert.\n"
+        f"7. Output a concise summary of the decisions made."
+    )
     webhook_payload = {
         "event": "appointment_cancelled",
         "appointment_id": appointment.id,
         "doctor_id": appointment.doctor_id,
-        "slot_time": appointment.start_time.isoformat(),
+        "slot_time": slot_iso,
         "cancelled_by_patient_id": cancelling_patient_id,
         "reason": data.cancellation_reason,
         "timestamp": datetime.now(timezone.utc).isoformat(),
+        "chatInput": agent_prompt,
     }
     background_tasks.add_task(
         trigger_n8n_webhook,
