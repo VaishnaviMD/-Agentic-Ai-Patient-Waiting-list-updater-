@@ -41,7 +41,8 @@
     },
     {
       "parameters": {
-        "text": "An appointment cancellation event has occurred.\n\nCancellation Context:\n- Appointment ID: {{ $json.body.appointment_id }}\n- Doctor ID: {{ $json.body.doctor_id }}\n- Slot Time: {{ $json.body.slot_time }}\n- Reason: {{ $json.body.reason }}\n\nYour Goal as Autonomous Scheduling Agent:\n1. Call tool 'get_appointment_details' to retrieve clinical slot parameters.\n2. Call tool 'find_eligible_patients' to query patients on this doctor's waitlist.\n3. If NO eligible patients exist, call tool 'escalate_to_admin' with reason 'No waitlist candidates'.\n4. If candidates exist, call tool 'rank_waitlist_candidates' to obtain deterministic scores.\n5. Select Candidate #1 (highest score) and call tool 'create_appointment_offer'.\n6. Call tool 'notify_patient' to deliver the in-app offer alert.\n7. Output a concise summary of the decisions made."
+        "text": "=An appointment cancellation event has occurred.\n\nCancellation Context:\n- Appointment ID: {{ $json.body.appointment_id }}\n- Doctor ID: {{ $json.body.doctor_id }}\n- Slot Time: {{ $json.body.slot_time }}\n- Reason: {{ $json.body.reason }}\n\nYour Goal as Autonomous Scheduling Agent:\n1. Call tool 'get_appointment_details' to retrieve clinical slot parameters.\n2. Call tool 'find_eligible_patients' to query patients on this doctor's waitlist.\n3. If NO eligible patients exist, call tool 'escalate_to_admin' with reason 'No waitlist candidates'.\n4. If candidates exist, call tool 'rank_waitlist_candidates' to obtain deterministic scores.\n5. Select Candidate #1 (highest score) and call tool 'create_appointment_offer'.\n6. Call tool 'notify_patient' to deliver the in-app offer alert.\n7. Output a concise summary of the decisions made.",
+        "promptType": "define"
       },
       "id": "ai-agent-coordinator",
       "name": "AI Scheduling Coordinator Agent",
